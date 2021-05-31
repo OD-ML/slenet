@@ -1,0 +1,5 @@
+{
+    "azureML.defaultWorkspaceId": "/subscriptions/7dcece7e-7044-4d5f-9c08-0e408f5f04dc/resourceGroups/resource1/providers/Microsoft.MachineLearningServices/workspaces/gpuresearch",
+    "jupyter.jupyterServerType": "remote",
+    "python.pythonPath": "C:\\Python39\\python.exe"
+}
