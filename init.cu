@@ -3,19 +3,7 @@
 #include "headers/slenet_params.h"
 #include "headers/load_mnist.h"
 #include "headers/Layer.h"
-#include "headers/Slenet.h"
-
-
-
-#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
-{
-   if (code != cudaSuccess) 
-   {
-      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-      if (abort) exit(code);
-   }
-}
+#include "headers/Slenet_shv1.h"
 
 // Layer declarations
 Layer *convNet;
@@ -46,70 +34,18 @@ float forward_pass(double data[INSIZE][INSIZE]) {
   for (int i=0; i<INSIZE; i++)
     for (int j=0; j<INSIZE; j++)
       arr[i][j] = data[i][j];
-	float convPreoutput[CONV_FTRS][CONV_OUTSIZE][CONV_OUTSIZE] = {0};
-	float convOutput[CONV_FTRS][CONV_OUTSIZE][CONV_OUTSIZE] = {0};
-	float ssPreoutput[CONV_FTRS][SS_OUTSIZE][SS_OUTSIZE] = {0};
-	float ssOutput[CONV_FTRS][SS_OUTSIZE][SS_OUTSIZE] = {0};
-	float fcPreoutput[FC_OUTSIZE] = {0};
-	float fcOutput[FC_OUTSIZE] = {0};
 
-	// Copying variables to Cuda memory
+	// Copying input to Cuda memory
 	gpuErrchk(cudaMalloc(&gInput, INSIZE*INSIZE*sizeof(float)));
 	gpuErrchk(cudaMemcpy(gInput, arr, INSIZE*INSIZE*sizeof(float), cudaMemcpyDefault));
-	gpuErrchk(cudaMemcpy(convNet->pre_output, 
-            convPreoutput, 
-            CONV_FTRS*CONV_OUTSIZE*CONV_OUTSIZE*sizeof(float), 
-            cudaMemcpyDefault));
-	gpuErrchk(cudaMemcpy(convNet->output, 
-            convOutput, 
-            CONV_FTRS*CONV_OUTSIZE*CONV_OUTSIZE*sizeof(float), 
-            cudaMemcpyDefault));
-	gpuErrchk(cudaMemcpy(convNet->weight, 
-            convWeights, 
-            CONV_FTRS*CONV_WSIZE*CONV_WSIZE*sizeof(float), 
-            cudaMemcpyDefault));
-	gpuErrchk(cudaMemcpy(convNet->bias, 
-            convBias, 
-            CONV_FTRS*sizeof(float), 
-            cudaMemcpyDefault));
-	gpuErrchk(cudaMemcpy(ss1Net->pre_output, 
-            ssPreoutput, 
-            CONV_FTRS*SS_OUTSIZE*SS_OUTSIZE*sizeof(float), 
-            cudaMemcpyDefault));
-	gpuErrchk(cudaMemcpy(ss1Net->output, 
-            ssOutput, 
-            CONV_FTRS*SS_OUTSIZE*SS_OUTSIZE*sizeof(float), 
-            cudaMemcpyDefault));
-	gpuErrchk(cudaMemcpy(ss1Net->weight, 
-            ssWeights, 
-            SS_FTRS*SS_WSIZE*SS_WSIZE*sizeof(float), 
-            cudaMemcpyDefault));
-	gpuErrchk(cudaMemcpy(ss1Net->bias, 
-            ssBias, 
-            SS_FTRS*sizeof(float), 
-            cudaMemcpyDefault));
-	gpuErrchk(cudaMemcpy(fcNet->pre_output, 
-            fcPreoutput, 
-            FC_OUTSIZE*sizeof(float), 
-            cudaMemcpyDefault));
-	gpuErrchk(cudaMemcpy(fcNet->output, 
-            fcOutput, 
-            FC_OUTSIZE*sizeof(float), 
-            cudaMemcpyDefault));
-	gpuErrchk(cudaMemcpy(fcNet->weight, 
-            fcWeights, 
-            FC_WSIZE*FC_FTRS*sizeof(float), 
-            cudaMemcpyDefault));
-	gpuErrchk(cudaMemcpy(fcNet->bias, 
-            fcBias, 
-            FC_FTRS*sizeof(float), 
-            cudaMemcpyDefault));
+
 	dim3 numBlocks(CONV_FTRS);
 	dim3 threadPerBlock(CONV_OUTSIZE, CONV_OUTSIZE);
 	dim3 ss1NumBlocks(CONV_OUTSIZE/SS_OUTSIZE, CONV_OUTSIZE/SS_OUTSIZE);
 	dim3 ss1NthreadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
 	dim3 fcNumBlocks(FC_OUTSIZE);
 	dim3 fcNthreadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
+
 	cudaEvent_t start, stop;
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
@@ -138,7 +74,6 @@ float forward_pass(double data[INSIZE][INSIZE]) {
 	kernel_ss1_sigmoid<<<1, ss1NthreadPerBlock>>>(
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->pre_output, 
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output);
-  cudaMemcpy(ssOutput, ss1Net->output, 6*6*6*sizeof(float), cudaMemcpyDefault);
 
 	// Fully Connected
 	kernel_fc1_filter<<<fcNumBlocks, fcNthreadPerBlock>>>(
@@ -192,6 +127,28 @@ int main() {
 	convNet = new Layer(CONV_WSIZE*CONV_WSIZE, CONV_FTRS, CONV_FTRS*CONV_OUTSIZE*CONV_OUTSIZE);
 	ss1Net = new Layer(SS_WSIZE*SS_WSIZE, SS_FTRS, CONV_FTRS*SS_OUTSIZE*SS_OUTSIZE);
 	fcNet = new Layer(FC_WSIZE, FC_FTRS, FC_OUTSIZE);
+  gpuErrchk(cudaMemcpy(convNet->weight, 
+                      convWeights, 
+                      CONV_WSIZE * CONV_WSIZE * CONV_FTRS * sizeof(float), 
+                      cudaMemcpyDefault));
+	gpuErrchk(cudaMemcpy(convNet->bias, 
+                      convBias, 
+                      CONV_FTRS * sizeof(float), 
+                      cudaMemcpyDefault));
+  gpuErrchk(cudaMemcpy(ss1Net->weight, 
+                      ssWeights, 
+                      SS_FTRS * SS_WSIZE * SS_WSIZE * sizeof(float), 
+                      cudaMemcpyDefault));
+	gpuErrchk(cudaMemcpy(ss1Net->bias, 
+                      ssBias, 
+                      SS_FTRS * sizeof(float), 
+                      cudaMemcpyDefault));
+	gpuErrchk(cudaMemcpy(fcNet->weight, 
+                      fcWeights, FC_FTRS * FC_WSIZE * sizeof(float), 
+                      cudaMemcpyDefault));
+	gpuErrchk(cudaMemcpy(fcNet->bias, 
+                      fcBias, FC_FTRS * sizeof(float), 
+                      cudaMemcpyDefault));
   
 	float time_taken = 0;
 	unsigned int error = 0;
