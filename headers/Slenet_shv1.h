@@ -1,5 +1,3 @@
-#include <math.h>
-
 #define CONV_OUTSIZE 24
 #define CONV_FTRS 6
 #define CONV_WSIZE 5
@@ -32,20 +30,24 @@ __global__ void kernel_conv_bias(
     float preoutput[][CONV_OUTSIZE][CONV_OUTSIZE], 
     float bias[]) 
 {
-	int row = threadIdx.x;
-	int col = threadIdx.y;
-	int ftr = blockIdx.x;
-	preoutput[ftr][row][col] += bias[ftr];
+	int row = blockIdx.x * blockDim.x + threadIdx.x;
+	int col = blockIdx.y * blockDim.y + threadIdx.y;
+	int ftr = threadIdx.z;
+	__shared__ float sh_bias[CONV_FTRS];
+	if (threadIdx.x == 0 && threadIdx.y == 0)
+		sh_bias[ftr] = bias[ftr];
+	__syncthreads();
+	preoutput[ftr][row][col] += sh_bias[ftr];
 }
 
 __global__ void kernel_conv_sigmoid(
     float preoutput[CONV_FTRS][CONV_OUTSIZE][CONV_OUTSIZE], 
     float output[CONV_FTRS][CONV_OUTSIZE][CONV_OUTSIZE]) 
 {
-	int row = threadIdx.x;
-	int col = threadIdx.y;
-	int ftr = blockIdx.x;
-	output[ftr][row][col] = 1/(1+exp(-preoutput[ftr][row][col]));
+	int row = blockIdx.x * blockDim.x + threadIdx.x;
+	int col = blockIdx.y * blockDim.y + threadIdx.y;
+	int ftr = blockIdx.z * blockDim.z + threadIdx.z;
+	output[ftr][row][col] = 1/(1+__expf(-preoutput[ftr][row][col]));
 }
 
 // FUNCTIONS FOR SS1 LAYER
@@ -67,10 +69,14 @@ __global__ void kernel_ss1_bias(
     float preoutput[CONV_FTRS][SS_OUTSIZE][SS_OUTSIZE], 
     float bias[SS_FTRS]) 
 {
-	int row = threadIdx.x;
-	int col = threadIdx.y;
-	int ftr = threadIdx.z;
-    preoutput[ftr][row][col] += bias[0];
+	int row = blockIdx.x * blockDim.x + threadIdx.x;
+	int col = blockIdx.y * blockDim.y + threadIdx.y;
+	int ftr = blockIdx.z * blockDim.z + threadIdx.z;
+	__shared__ float sh_bias;
+	if (threadIdx.x == 0 && threadIdx.y == 0 && threadIdx.z == 0)
+		sh_bias = bias[0];
+	__syncthreads();
+    preoutput[ftr][row][col] += sh_bias;
 }
 
 __global__ void kernel_ss1_sigmoid(
@@ -80,7 +86,7 @@ __global__ void kernel_ss1_sigmoid(
 	int row = threadIdx.x;
 	int col = threadIdx.y;
 	int ftr = threadIdx.z;
-	output[ftr][row][col] = 1/(1+exp(-preoutput[ftr][row][col]));
+	output[ftr][row][col] = 1/(1+__expf(-preoutput[ftr][row][col]));
     preoutput[ftr][row][col] = 0;
 }
 
@@ -111,6 +117,6 @@ __global__ void kernel_fc1_sigmoid(
     float output[FC_OUTSIZE]
 )
 {
-	output[threadIdx.x] = 1/(1+exp(-preoutput[threadIdx.x]));
+	output[threadIdx.x] = 1/(1+__expf(-preoutput[threadIdx.x]));
     preoutput[threadIdx.x] = 0;
 }
