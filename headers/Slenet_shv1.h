@@ -83,9 +83,9 @@ __global__ void kernel_ss1_sigmoid(
     float preoutput[CONV_FTRS][SS_OUTSIZE][SS_OUTSIZE], 
     float output[CONV_FTRS][SS_OUTSIZE][SS_OUTSIZE]) 
 {
-	int row = threadIdx.x;
-	int col = threadIdx.y;
-	int ftr = threadIdx.z;
+	int row = blockIdx.x * blockDim.x + threadIdx.x;
+	int col = blockIdx.y * blockDim.y + threadIdx.y;
+	int ftr = blockIdx.z * blockDim.z + threadIdx.z;
 	output[ftr][row][col] = 1/(1+__expf(-preoutput[ftr][row][col]));
     preoutput[ftr][row][col] = 0;
 }
@@ -109,7 +109,9 @@ __global__ void kernel_fc1_bias(
     float bias[FC_FTRS]
 )
 {
-  preoutput[threadIdx.x] += bias[threadIdx.x];
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	if (idx < FC_OUTSIZE)
+		preoutput[idx] += bias[idx];
 }
 
 __global__ void kernel_fc1_sigmoid(
@@ -117,6 +119,7 @@ __global__ void kernel_fc1_sigmoid(
     float output[FC_OUTSIZE]
 )
 {
-	output[threadIdx.x] = 1/(1+__expf(-preoutput[threadIdx.x]));
-    preoutput[threadIdx.x] = 0;
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	output[idx] = 1/(1+__expf(-preoutput[idx]));
+    preoutput[idx] = 0;
 }

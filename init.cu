@@ -65,9 +65,9 @@ float forward_pass(double data[INSIZE][INSIZE]) {
       (float(*)[CONV_OUTSIZE][CONV_OUTSIZE])convNet->output);
 
 	// Subsampling
-	dim3 ss1NumBlocks(CONV_OUTSIZE/SS_OUTSIZE, CONV_OUTSIZE/SS_OUTSIZE);
-	dim3 ss1NthreadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
-	kernel_ss1_filter<<<ss1NumBlocks, ss1NthreadPerBlock>>>(
+	dim3 ssf_numBlocks(CONV_OUTSIZE/SS_OUTSIZE, CONV_OUTSIZE/SS_OUTSIZE, 1);
+	dim3 ssf_threadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
+	kernel_ss1_filter<<<ssf_numBlocks, ssf_threadPerBlock>>>(
       (float(*)[CONV_OUTSIZE][CONV_OUTSIZE])convNet->output, 
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->pre_output, 
       (float(*)[SS_WSIZE][SS_WSIZE])ss1Net->weight);
@@ -76,7 +76,9 @@ float forward_pass(double data[INSIZE][INSIZE]) {
 	kernel_ss1_bias<<<ssb_numBlocks, ssb_threadPerBlock>>>(
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->pre_output, 
       ss1Net->bias);
-	kernel_ss1_sigmoid<<<1, ss1NthreadPerBlock>>>(
+	dim3 sss_numBlocks(3, 2, 2);
+	dim3 sss_threadPerBlock(SS_OUTSIZE/sss_numBlocks.x, SS_OUTSIZE/sss_numBlocks.y, CONV_FTRS/sss_numBlocks.z);
+	kernel_ss1_sigmoid<<<sss_numBlocks, sss_threadPerBlock>>>(
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->pre_output, 
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output);
 
@@ -87,8 +89,8 @@ float forward_pass(double data[INSIZE][INSIZE]) {
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
       fcNet->pre_output, 
       (float(*)[FC_WSIZE])fcNet->weight);
-	kernel_fc1_bias<<<1, FC_OUTSIZE>>>(fcNet->pre_output, fcNet->bias);
-	kernel_fc1_sigmoid<<<1, FC_OUTSIZE>>>(fcNet->pre_output, fcNet->output);
+	kernel_fc1_bias<<<10, FC_OUTSIZE/10>>>(fcNet->pre_output, fcNet->bias);
+	kernel_fc1_sigmoid<<<10, FC_OUTSIZE/10>>>(fcNet->pre_output, fcNet->output);
 
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
