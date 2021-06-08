@@ -19,11 +19,13 @@ __global__ void kernel_conv_filter(
 	int row = threadIdx.x;
 	int col = threadIdx.y;
 	int ftr = blockIdx.x;
+    float sum = 0;
 	for (int i=0; i < 5; i++)
 		for (int j=0; j < 5; j++)
-			preoutput[ftr][row][col] += 
+			sum += 
       input[row+i][col+j] *
       weight[ftr][i][j];
+    preoutput[ftr][row][col] = sum;
 }
 
 __global__ void kernel_conv_bias(

@@ -8,22 +8,34 @@
 #define FC_FTRS 10
 #define FC_WSIZE 216
 
+const dim3 cf_numBlocks(24, 24);
+const dim3 cf_threadPerBlock(5, 5, 6);
+const dim3 cb_numBlocks(6, 6);
+const dim3 cb_threadPerBlock(CONV_OUTSIZE/cb_numBlocks.x, CONV_OUTSIZE/cb_numBlocks.y, 6);
+const dim3 cs_numBlocks(6, 6, 1);
+const dim3 cs_threadPerBlock(CONV_OUTSIZE/cs_numBlocks.x, CONV_OUTSIZE/cs_numBlocks.y, 6/cs_numBlocks.z);
+const dim3 ssf_numBlocks(CONV_OUTSIZE/SS_OUTSIZE, CONV_OUTSIZE/SS_OUTSIZE, 1);
+const dim3 ssf_threadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
+const dim3 ssb_numBlocks(3, 2, 2);
+const dim3 ssb_threadPerBlock(SS_OUTSIZE/ssb_numBlocks.x, SS_OUTSIZE/ssb_numBlocks.y, CONV_FTRS/ssb_numBlocks.z);
+const dim3 sss_numBlocks(3, 2, 2);
+const dim3 sss_threadPerBlock(SS_OUTSIZE/sss_numBlocks.x, SS_OUTSIZE/sss_numBlocks.y, CONV_FTRS/sss_numBlocks.z);
+const dim3 fcNumBlocks(FC_OUTSIZE);
+const dim3 fcNthreadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
+
+
 // FUNCTIONS FOR CONV LAYER
 __global__ void kernel_conv_filter(
     float input[][28], 
     float preoutput[][24][24], 
     float weight[][5][5])
 {
-	int row = threadIdx.x;
-	int col = threadIdx.y;
-	int ftr = blockIdx.x;
-    float sum = 0;
-	for (int i=0; i < 5; i++)
-		for (int j=0; j < 5; j++)
-			sum += 
-      input[row+i][col+j] *
-      weight[ftr][i][j];
-    preoutput[ftr][row][col] = sum;
+	int img_row = blockIdx.x + threadIdx.x;
+	int img_col = blockIdx.y + threadIdx.y;	
+	int w_row = threadIdx.x;
+	int w_col = threadIdx.y;
+	int ftr = threadIdx.z;
+	atomicAdd(&preoutput[ftr][blockIdx.x][blockIdx.y], input[img_row][img_col]*weight[ftr][w_row][w_col]);
 }
 
 __global__ void kernel_conv_bias(
@@ -48,6 +60,7 @@ __global__ void kernel_conv_sigmoid(
 	int col = blockIdx.y * blockDim.y + threadIdx.y;
 	int ftr = blockIdx.z * blockDim.z + threadIdx.z;
 	output[ftr][row][col] = 1/(1+__expf(-preoutput[ftr][row][col]));
+	preoutput[ftr][row][col] = 0;
 }
 
 // FUNCTIONS FOR SS1 LAYER

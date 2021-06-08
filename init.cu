@@ -45,46 +45,30 @@ float forward_pass(double data[INSIZE][INSIZE]) {
 	cudaEventRecord(start, 0);
 
 	// Convolution
-	dim3 cf_numBlocks(CONV_FTRS);
-	dim3 cf_threadPerBlock(CONV_OUTSIZE, CONV_OUTSIZE);
 	kernel_conv_filter<<<cf_numBlocks, cf_threadPerBlock>>>(
       (float(*)[INSIZE])gInput, 
       (float(*)[CONV_OUTSIZE][CONV_OUTSIZE])convNet->pre_output, 
       (float(*)[CONV_WSIZE][CONV_WSIZE])convNet->weight);
-
-	dim3 cb_numBlocks(6, 6);
-	dim3 cb_threadPerBlock(CONV_OUTSIZE/cb_numBlocks.x, CONV_OUTSIZE/cb_numBlocks.y, 6);
 	kernel_conv_bias<<<cb_numBlocks, cb_threadPerBlock>>>(
       (float(*)[CONV_OUTSIZE][CONV_OUTSIZE])convNet->pre_output, 
       convNet->bias);
-
-	dim3 cs_numBlocks(6, 6, 1);
-	dim3 cs_threadPerBlock(CONV_OUTSIZE/cs_numBlocks.x, CONV_OUTSIZE/cs_numBlocks.y, 6/cs_numBlocks.z);
 	kernel_conv_sigmoid<<<cs_numBlocks, cs_threadPerBlock>>>(
       (float(*)[CONV_OUTSIZE][CONV_OUTSIZE])convNet->pre_output, 
       (float(*)[CONV_OUTSIZE][CONV_OUTSIZE])convNet->output);
 
 	// Subsampling
-	dim3 ssf_numBlocks(CONV_OUTSIZE/SS_OUTSIZE, CONV_OUTSIZE/SS_OUTSIZE, 1);
-	dim3 ssf_threadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
 	kernel_ss1_filter<<<ssf_numBlocks, ssf_threadPerBlock>>>(
       (float(*)[CONV_OUTSIZE][CONV_OUTSIZE])convNet->output, 
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->pre_output, 
       (float(*)[SS_WSIZE][SS_WSIZE])ss1Net->weight);
-	dim3 ssb_numBlocks(3, 2, 2);
-	dim3 ssb_threadPerBlock(SS_OUTSIZE/ssb_numBlocks.x, SS_OUTSIZE/ssb_numBlocks.y, CONV_FTRS/ssb_numBlocks.z);
 	kernel_ss1_bias<<<ssb_numBlocks, ssb_threadPerBlock>>>(
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->pre_output, 
       ss1Net->bias);
-	dim3 sss_numBlocks(3, 2, 2);
-	dim3 sss_threadPerBlock(SS_OUTSIZE/sss_numBlocks.x, SS_OUTSIZE/sss_numBlocks.y, CONV_FTRS/sss_numBlocks.z);
 	kernel_ss1_sigmoid<<<sss_numBlocks, sss_threadPerBlock>>>(
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->pre_output, 
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output);
 
 	// Fully Connected
-	dim3 fcNumBlocks(FC_OUTSIZE);
-	dim3 fcNthreadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
 	kernel_fc1_filter<<<fcNumBlocks, fcNthreadPerBlock>>>(
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
       fcNet->pre_output, 
@@ -110,33 +94,33 @@ int main() {
 	else
 		printf("test_cnt = %d \n", test_cnt); // test_cnt must have the number of test images (i.e., 10K)
 
-  for (int i=0; i < CONV_FTRS; i++)
-    for (int j = 0; j < CONV_WSIZE; j++)
-      for (int k = 0; k < CONV_WSIZE; k++)
-        convWeights[i][j][k] = c1_weight[i][j*CONV_WSIZE+k];
+	for (int i=0; i < CONV_FTRS; i++)
+		for (int j = 0; j < CONV_WSIZE; j++)
+			for (int k = 0; k < CONV_WSIZE; k++)
+				convWeights[i][j][k] = c1_weight[i][j*CONV_WSIZE+k];
   
-  for (int i=0; i < CONV_FTRS; i++)
-    convBias[i] = c1_bias[i];
+	for (int i=0; i < CONV_FTRS; i++)
+		convBias[i] = c1_bias[i];
 
-  for (int i=0; i < SS_FTRS; i++)
-    for (int j = 0; j < SS_WSIZE; j++)
-      for (int k = 0; k < SS_WSIZE; k++)
-        ssWeights[i][j][k] = s2_weight[i][j*SS_WSIZE+k];
+	for (int i=0; i < SS_FTRS; i++)
+		for (int j = 0; j < SS_WSIZE; j++)
+			for (int k = 0; k < SS_WSIZE; k++)
+				ssWeights[i][j][k] = s2_weight[i][j*SS_WSIZE+k];
   
-  for (int i=0; i < SS_FTRS; i++)
-    ssBias[i] = s2_bias[i];
+	for (int i=0; i < SS_FTRS; i++)
+		ssBias[i] = s2_bias[i];
   
-  for (int i=0; i < FC_FTRS; i++)
-    for (int j=0; j < FC_WSIZE; j++)
-      fcWeights[i][j] = f3_weight[i][j];
+	for (int i=0; i < FC_FTRS; i++)
+		for (int j=0; j < FC_WSIZE; j++)
+			fcWeights[i][j] = f3_weight[i][j];
   
-  for (int i=0; i < FC_FTRS; i++)
-    fcBias[i] = f3_bias[i];
+	for (int i=0; i < FC_FTRS; i++)
+		fcBias[i] = f3_bias[i];
 
 	convNet = new Layer(CONV_WSIZE*CONV_WSIZE, CONV_FTRS, CONV_FTRS*CONV_OUTSIZE*CONV_OUTSIZE);
 	ss1Net = new Layer(SS_WSIZE*SS_WSIZE, SS_FTRS, CONV_FTRS*SS_OUTSIZE*SS_OUTSIZE);
 	fcNet = new Layer(FC_WSIZE, FC_FTRS, FC_OUTSIZE);
-  gpuErrchk(cudaMemcpy(convNet->weight, 
+  	gpuErrchk(cudaMemcpy(convNet->weight, 
                       convWeights, 
                       CONV_WSIZE * CONV_WSIZE * CONV_FTRS * sizeof(float), 
                       cudaMemcpyDefault));
@@ -144,7 +128,7 @@ int main() {
                       convBias, 
                       CONV_FTRS * sizeof(float), 
                       cudaMemcpyDefault));
-  gpuErrchk(cudaMemcpy(ss1Net->weight, 
+  	gpuErrchk(cudaMemcpy(ss1Net->weight, 
                       ssWeights, 
                       SS_FTRS * SS_WSIZE * SS_WSIZE * sizeof(float), 
                       cudaMemcpyDefault));
