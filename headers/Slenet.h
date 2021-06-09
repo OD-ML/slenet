@@ -10,6 +10,23 @@
 #define FC_FTRS 10
 #define FC_WSIZE 216
 
+const dim3 cf_numBlocks(6);
+const dim3 cf_threadPerBlock(24, 24);
+const dim3 cb_numBlocks(6);
+const dim3 cb_threadPerBlock(24, 24);
+const dim3 cs_numBlocks(6);
+const dim3 cs_threadPerBlock(24, 24);
+const dim3 ssf_numBlocks(CONV_OUTSIZE/SS_OUTSIZE, CONV_OUTSIZE/SS_OUTSIZE);
+const dim3 ssf_threadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
+const dim3 ssb_numBlocks(1);
+const dim3 ssb_threadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
+const dim3 sss_numBlocks(1);
+const dim3 sss_threadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
+const dim3 fcfNumBlocks(FC_OUTSIZE);
+const dim3 fcfNthreadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
+const dim3 fcbsNumBlocks(1);
+const dim3 fcbsNthreadPerBlock(FC_OUTSIZE);
+
 // FUNCTIONS FOR CONV LAYER
 __global__ void kernel_conv_filter(
     float input[][28], 
@@ -81,6 +98,7 @@ __global__ void kernel_ss1_sigmoid(
 	int col = threadIdx.y;
 	int ftr = threadIdx.z;
 	output[ftr][row][col] = 1/(1+exp(-preoutput[ftr][row][col]));
+	preoutput[ftr][row][col] = 0;
 }
 
 //FUNCTIONS FOR FC LAYER
@@ -111,4 +129,5 @@ __global__ void kernel_fc1_sigmoid(
 )
 {
 	output[threadIdx.x] = 1/(1+exp(-pre_output[threadIdx.x]));
+	pre_output[threadIdx.x] = 0;
 }

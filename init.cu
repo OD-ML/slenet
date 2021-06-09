@@ -3,7 +3,7 @@
 #include "headers/slenet_params.h"
 #include "headers/load_mnist.h"
 #include "headers/Layer.h"
-#include "headers/Slenet_shv1.h"
+#include "headers/Slenet_shv2.h"
 
 // Layer declarations
 Layer *convNet;
@@ -16,15 +16,6 @@ float ssWeights[SS_FTRS][SS_WSIZE][SS_WSIZE];
 float ssBias[SS_FTRS];
 float fcWeights[FC_FTRS][FC_WSIZE];
 float fcBias[FC_FTRS];
-
-float verifyArray(float arr[FC_OUTSIZE], 
-                      float num) 
-{
-	float maxError = 0;
-	for (int i=0; i < FC_OUTSIZE; i++)
-		maxError = max(maxError, abs(arr[i]-num));
-	return maxError;
-}
 
 int count = 0;
 
@@ -69,12 +60,12 @@ float forward_pass(double data[INSIZE][INSIZE]) {
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output);
 
 	// Fully Connected
-	kernel_fc1_filter<<<fcNumBlocks, fcNthreadPerBlock>>>(
+	kernel_fc1_filter<<<fcfNumBlocks, fcfNthreadPerBlock>>>(
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
       fcNet->pre_output, 
       (float(*)[FC_WSIZE])fcNet->weight);
-	kernel_fc1_bias<<<10, FC_OUTSIZE/10>>>(fcNet->pre_output, fcNet->bias);
-	kernel_fc1_sigmoid<<<10, FC_OUTSIZE/10>>>(fcNet->pre_output, fcNet->output);
+	kernel_fc1_bias<<<fcbsNumBlocks, fcbsNthreadPerBlock>>>(fcNet->pre_output, fcNet->bias);
+	kernel_fc1_sigmoid<<<fcbsNumBlocks, fcbsNthreadPerBlock>>>(fcNet->pre_output, fcNet->output);
 
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);

@@ -8,8 +8,8 @@
 #define FC_FTRS 10
 #define FC_WSIZE 216
 
-const dim3 cf_numBlocks(6);
-const dim3 cf_threadPerBlock(24, 24);
+const dim3 cf_numBlocks(8, 8);
+const dim3 cf_threadPerBlock(8, 8, 6);
 const dim3 cb_numBlocks(6, 6);
 const dim3 cb_threadPerBlock(CONV_OUTSIZE/cb_numBlocks.x, CONV_OUTSIZE/cb_numBlocks.y, 6);
 const dim3 cs_numBlocks(6, 6, 1);
@@ -20,8 +20,10 @@ const dim3 ssb_numBlocks(3, 2, 2);
 const dim3 ssb_threadPerBlock(SS_OUTSIZE/ssb_numBlocks.x, SS_OUTSIZE/ssb_numBlocks.y, CONV_FTRS/ssb_numBlocks.z);
 const dim3 sss_numBlocks(3, 2, 2);
 const dim3 sss_threadPerBlock(SS_OUTSIZE/sss_numBlocks.x, SS_OUTSIZE/sss_numBlocks.y, CONV_FTRS/sss_numBlocks.z);
-const dim3 fcNumBlocks(FC_OUTSIZE);
-const dim3 fcNthreadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
+const dim3 fcfNumBlocks(FC_OUTSIZE);
+const dim3 fcfNthreadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
+const dim3 fcbsNumBlocks(10);
+const dim3 fcbsNthreadPerBlock(FC_OUTSIZE/10);
 
 
 // FUNCTIONS FOR CONV LAYER
@@ -30,16 +32,25 @@ __global__ void kernel_conv_filter(
     float preoutput[][24][24], 
     float weight[][5][5])
 {
-	int row = threadIdx.x;
-	int col = threadIdx.y;
-	int ftr = blockIdx.x;
-    float sum = 0;
-	for (int i=0; i < 5; i++)
-		for (int j=0; j < 5; j++)
-			sum += 
-      input[row+i][col+j] *
-      weight[ftr][i][j];
-    preoutput[ftr][row][col] = sum;
+	int img_row = blockIdx.x * 3 + threadIdx.x;
+	int img_col = blockIdx.y * 3 + threadIdx.y;	
+	int w_row = threadIdx.x;
+	int w_col = threadIdx.y;
+	int ftr = threadIdx.z;
+	__shared__ float sh_img[8][8];
+	__shared__ float sh_weight[6][5][5];
+	if (ftr == 0)
+		sh_img[w_row][w_col] = input[img_row][img_col];
+	if (w_row*8 + w_col < 25)
+		sh_weight[ftr][(w_row*8+w_col)/5][(w_row*8+w_col)%5] = weight[ftr][(w_row*8+w_col)/5][(w_row*8+w_col)%5];
+	__syncthreads();
+	float sum = 0;
+	if (w_row*8 + w_col < 9) {
+		for (int i = 0; i < 5; i++)
+			for (int j = 0; j < 5; j++)
+				sum += sh_img[(w_row*8 + w_col)/3 + i][(w_row*8 + w_col)%3 + j] * sh_weight[ftr][i][j];
+		preoutput[ftr][blockIdx.x * 3 + (w_row*8 + w_col)/3][blockIdx.y * 3+ (w_row*8 + w_col)%3] = sum;
+	}
 }
 
 __global__ void kernel_conv_bias(
