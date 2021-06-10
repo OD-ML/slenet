@@ -41,15 +41,15 @@ __global__ void kernel_conv_filter(
 	__shared__ float sh_weight[6][5][5];
 	if (ftr == 0)
 		sh_img[w_row][w_col] = input[img_row][img_col];
-	if (w_row*8 + w_col < 25)
-		sh_weight[ftr][(w_row*8+w_col)/5][(w_row*8+w_col)%5] = weight[ftr][(w_row*8+w_col)/5][(w_row*8+w_col)%5];
+	if (w_row < 5 && w_col < 5)
+		sh_weight[ftr][w_row][w_col] = weight[ftr][w_row][w_col];
 	__syncthreads();
 	float sum = 0;
-	if (w_row*8 + w_col < 9) {
+	if (w_row < 3 && w_col < 3) {
 		for (int i = 0; i < 5; i++)
 			for (int j = 0; j < 5; j++)
-				sum += sh_img[(w_row*8 + w_col)/3 + i][(w_row*8 + w_col)%3 + j] * sh_weight[ftr][i][j];
-		preoutput[ftr][blockIdx.x * 3 + (w_row*8 + w_col)/3][blockIdx.y * 3+ (w_row*8 + w_col)%3] = sum;
+				sum += sh_img[w_row + i][w_col + j] * sh_weight[ftr][i][j];
+		preoutput[ftr][blockIdx.x * 3 + w_row][blockIdx.y * 3+ w_col] = sum;
 	}
 }
 

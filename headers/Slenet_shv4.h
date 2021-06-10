@@ -44,13 +44,13 @@ __global__ void kernel_conv_filter(
         sh_weight[idx/5][idx%5] = weight[ftr][idx/5][idx%5];
     __syncthreads();
     float sum = 0;
-    if (idx < 24*24) {
+    if (row < 24 && col < 24) {
         for (int i=0; i < 5; i++)
             for (int j=0; j < 5; j++)
                 sum += 
-        sh_img[idx/24+i][idx%24+j] *
+        sh_img[row+i][col+j] *
         sh_weight[i][j];
-        preoutput[ftr][idx/24][idx%24] = sum;
+        preoutput[ftr][row][col] = sum;
     }
 }
 
