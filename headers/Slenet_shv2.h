@@ -8,8 +8,8 @@
 #define FC_FTRS 10
 #define FC_WSIZE 216
 
-const dim3 cf_numBlocks(8, 8);
-const dim3 cf_threadPerBlock(8, 8, 6);
+const dim3 cf_numBlocks(6, 6);
+const dim3 cf_threadPerBlock(160);
 const dim3 cb_numBlocks(6, 6);
 const dim3 cb_threadPerBlock(CONV_OUTSIZE/cb_numBlocks.x, CONV_OUTSIZE/cb_numBlocks.y, 6);
 const dim3 cs_numBlocks(6, 6, 1);
@@ -32,24 +32,27 @@ __global__ void kernel_conv_filter(
     float preoutput[][24][24], 
     float weight[][5][5])
 {
-	int img_row = blockIdx.x * 3 + threadIdx.x;
-	int img_col = blockIdx.y * 3 + threadIdx.y;	
-	int w_row = threadIdx.x;
-	int w_col = threadIdx.y;
-	int ftr = threadIdx.z;
+	int idx = threadIdx.x;
+	int img_row = idx / 8;
+	int img_col = idx % 8;
+	int inp_row = blockIdx.x * 4 + img_row;
+	int inp_col = blockIdx.y * 4 + img_col;
+	int ftr = idx / 25;
+	int w_row = (idx % 25) / 5;
+	int w_col = (idx % 25) % 5;
 	__shared__ float sh_img[8][8];
 	__shared__ float sh_weight[6][5][5];
-	if (ftr == 0)
-		sh_img[w_row][w_col] = input[img_row][img_col];
+	if (img_row < 8 && img_col < 8)
+		sh_img[img_row][img_col] = input[inp_row][inp_col];
 	if (w_row < 5 && w_col < 5)
 		sh_weight[ftr][w_row][w_col] = weight[ftr][w_row][w_col];
 	__syncthreads();
 	float sum = 0;
-	if (w_row < 3 && w_col < 3) {
+	if (w_row < 4 && w_col < 4) {
 		for (int i = 0; i < 5; i++)
 			for (int j = 0; j < 5; j++)
 				sum += sh_img[w_row + i][w_col + j] * sh_weight[ftr][i][j];
-		preoutput[ftr][blockIdx.x * 3 + w_row][blockIdx.y * 3+ w_col] = sum;
+		preoutput[ftr][blockIdx.x * 4 + w_row][blockIdx.y * 4 + w_col] = sum;
 	}
 }
 
