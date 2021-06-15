@@ -8,8 +8,8 @@
 #define FC_FTRS 10
 #define FC_WSIZE 216
 
-const dim3 cf_numBlocks(6, 6);
-const dim3 cf_threadPerBlock(160);
+const dim3 cf_numBlocks(6, 6, 3);
+const dim3 cf_threadPerBlock(64);
 const dim3 cb_numBlocks(6, 6);
 const dim3 cb_threadPerBlock(CONV_OUTSIZE/cb_numBlocks.x, CONV_OUTSIZE/cb_numBlocks.y, 6);
 const dim3 cs_numBlocks(6, 6, 1);
@@ -32,26 +32,26 @@ __global__ void kernel_conv_filter(
     float preoutput[][24][24], 
     float weight[][5][5])
 {
-	int idx = threadIdx.x;
+    int idx = threadIdx.x;
 	int img_row = idx / 8;
 	int img_col = idx % 8;
 	int inp_row = blockIdx.x * 4 + img_row;
 	int inp_col = blockIdx.y * 4 + img_col;
-	int ftr = idx / 25;
 	int w_row = (idx % 25) / 5;
 	int w_col = (idx % 25) % 5;
+    int sh_ftr = idx / 25;
+	int ftr = blockIdx.z * 2 + sh_ftr;
 	__shared__ float sh_img[8][8];
-	__shared__ float sh_weight[6][5][5];
-	if (idx < 64)
-		sh_img[img_row][img_col] = input[inp_row][inp_col];
-	if (idx < 150)
-		sh_weight[ftr][w_row][w_col] = weight[ftr][w_row][w_col];
+	__shared__ float sh_weight[2][5][5];
+	sh_img[img_row][img_col] = input[inp_row][inp_col];
+	if (idx < 50)
+		sh_weight[sh_ftr][w_row][w_col] = weight[ftr][w_row][w_col];
 	__syncthreads();
 	float sum = 0;
-	if (w_row < 4 && w_col < 4) {
-		for (int i = 0; i < 5; i++)
+	if (w_row < 4 && w_col < 4 && idx < 50) { // coalescing is required
+		for (int i = 0; i < 5; i++) // loop unrolling must be performed
 			for (int j = 0; j < 5; j++)
-				sum += sh_img[w_row + i][w_col + j] * sh_weight[ftr][i][j];
+				sum += sh_img[w_row + i][w_col + j] * sh_weight[sh_ftr][i][j];
 		preoutput[ftr][blockIdx.x * 4 + w_row][blockIdx.y * 4 + w_col] = sum;
 	}
 }
