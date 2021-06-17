@@ -8,7 +8,7 @@
 #define FC_FTRS 10
 #define FC_WSIZE 216
 
-const dim3 cf_numBlocks(6, 6);
+const dim3 cf_numBlocks(6, 6, 2);
 const dim3 cf_threadPerBlock(160);
 const dim3 cb_numBlocks(6, 6);
 const dim3 cb_threadPerBlock(CONV_OUTSIZE/cb_numBlocks.x, CONV_OUTSIZE/cb_numBlocks.y, 6);
@@ -37,22 +37,25 @@ __global__ void kernel_conv_filter(
 	int img_col = idx % 8;
 	int inp_row = blockIdx.x * 4 + img_row;
 	int inp_col = blockIdx.y * 4 + img_col;
-	int ftr = idx / 25;
-	int w_row = (idx % 25) / 5;
-	int w_col = (idx % 25) % 5;
+	int ftr = (idx - 64) / 25;
+	int w_row = ((idx - 64) % 25) / 5;
+	int w_col = ((idx - 64) % 25) % 5;
 	__shared__ float sh_img[8][8];
-	__shared__ float sh_weight[6][5][5];
+	__shared__ float sh_weight[3][5][5];
 	if (idx < 64)
 		sh_img[img_row][img_col] = input[inp_row][inp_col];
-	if (idx < 150)
-		sh_weight[ftr][w_row][w_col] = weight[ftr][w_row][w_col];
+	else if (idx < 139)
+		sh_weight[ftr][w_row][w_col] = weight[blockIdx.z * 3 + ftr][w_row][w_col];
 	__syncthreads();
 	float sum = 0;
-	if (w_row < 4 && w_col < 4 && ftr < 6) {
+    w_row = (idx % 25) / 5;
+    w_col = (idx % 25) % 5;
+    ftr = idx / 25;
+	if (w_row < 4 && w_col < 4 && ftr < 3) {
 		for (int i = 0; i < 5; i++)
 			for (int j = 0; j < 5; j++)
 				sum += sh_img[w_row + i][w_col + j] * sh_weight[ftr][i][j];
-		preoutput[ftr][blockIdx.x * 4 + w_row][blockIdx.y * 4 + w_col] = sum;
+		preoutput[blockIdx.z * 3 + ftr][blockIdx.x * 4 + w_row][blockIdx.y * 4 + w_col] = sum;
 	}
 }
 
