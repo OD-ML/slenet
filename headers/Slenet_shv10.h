@@ -8,20 +8,20 @@
 #define FC_FTRS 10
 #define FC_WSIZE 216
 
-const dim3 cf_numBlocks(6, 6, 1);
-const dim3 cf_threadPerBlock(214);
-const dim3 cb_numBlocks(18, 6);
-const dim3 cb_threadPerBlock(32);
-const dim3 cs_numBlocks(18, 6);
-const dim3 cs_threadPerBlock(32);
+const dim3 cf_numBlocks(6, 6, 6);
+const dim3 cf_threadPerBlock(512);
+const dim3 cb_numBlocks(6, 6);
+const dim3 cb_threadPerBlock(CONV_OUTSIZE/cb_numBlocks.x, CONV_OUTSIZE/cb_numBlocks.y, 6);
+const dim3 cs_numBlocks(6, 6, 1);
+const dim3 cs_threadPerBlock(CONV_OUTSIZE/cs_numBlocks.x, CONV_OUTSIZE/cs_numBlocks.y, 6/cs_numBlocks.z);
 const dim3 ssf_numBlocks(CONV_OUTSIZE/SS_OUTSIZE, CONV_OUTSIZE/SS_OUTSIZE, 1);
 const dim3 ssf_threadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
 const dim3 ssb_numBlocks(3, 2, 2);
 const dim3 ssb_threadPerBlock(SS_OUTSIZE/ssb_numBlocks.x, SS_OUTSIZE/ssb_numBlocks.y, CONV_FTRS/ssb_numBlocks.z);
 const dim3 sss_numBlocks(3, 2, 2);
 const dim3 sss_threadPerBlock(SS_OUTSIZE/sss_numBlocks.x, SS_OUTSIZE/sss_numBlocks.y, CONV_FTRS/sss_numBlocks.z);
-const dim3 fcfNumBlocks(7, 10);
-const dim3 fcfNthreadPerBlock(32);
+const dim3 fcfNumBlocks(FC_OUTSIZE);
+const dim3 fcfNthreadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
 const dim3 fcbsNumBlocks(10);
 const dim3 fcbsNthreadPerBlock(FC_OUTSIZE/10);
 
@@ -41,21 +41,20 @@ __global__ void kernel_conv_filter(
 	int w_row = ((idx - 64) % 25) / 5;
 	int w_col = ((idx - 64) % 25) % 5;
 	__shared__ float sh_img[8][8];
-	__shared__ float sh_weight[6][5][5];
+	__shared__ float sh_weight[5][5];
 	if (idx < 64)
 		sh_img[img_row][img_col] = input[inp_row][inp_col];
-	else if (idx < 214)
-		sh_weight[ftr][w_row][w_col] = weight[blockIdx.z * CONV_FTRS / gridDim.z + ftr][w_row][w_col];
+	else if (idx < 89)
+		sh_weight[w_row][w_col] = weight[blockIdx.z * CONV_FTRS / gridDim.z + ftr][w_row][w_col];
 	__syncthreads();
 	float sum = 0;
-    w_row = (idx % 25) / 5;
-    w_col = (idx % 25) % 5;
-    ftr = idx / 25;
-	if (w_row < 4 && w_col < 4 && ftr < 6) {
+    w_row = (idx / 32) / 4;
+    w_col = (idx / 32) % 4;
+	if (idx % 32 == 0) {
 		for (int i = 0; i < 5; i++)
 			for (int j = 0; j < 5; j++)
-				sum += sh_img[w_row + i][w_col + j] * sh_weight[ftr][i][j];
-		preoutput[blockIdx.z * CONV_FTRS / gridDim.z + ftr][blockIdx.x * 4 + w_row][blockIdx.y * 4 + w_col] = sum;
+				sum += sh_img[w_row + i][w_col + j] * sh_weight[i][j];
+		preoutput[blockIdx.z * CONV_FTRS / gridDim.z][blockIdx.x * 4 + w_row][blockIdx.y * 4 + w_col] = sum;
 	}
 }
 
@@ -63,22 +62,23 @@ __global__ void kernel_conv_bias(
     float preoutput[][CONV_OUTSIZE][CONV_OUTSIZE], 
     float bias[]) 
 {
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	int row = idx / 24;
-	int col = idx % 24;
-	int ftr = blockIdx.y;
-	preoutput[ftr][row][col] += bias[ftr];
+	int row = blockIdx.x * blockDim.x + threadIdx.x;
+	int col = blockIdx.y * blockDim.y + threadIdx.y;
+	int ftr = threadIdx.z;
+	__shared__ float sh_bias[CONV_FTRS];
+	if (threadIdx.x == 0 && threadIdx.y == 0)
+		sh_bias[ftr] = bias[ftr];
+	__syncthreads();
+	preoutput[ftr][row][col] += sh_bias[ftr];
 }
 
 __global__ void kernel_conv_sigmoid(
     float preoutput[CONV_FTRS][CONV_OUTSIZE][CONV_OUTSIZE], 
     float output[CONV_FTRS][CONV_OUTSIZE][CONV_OUTSIZE]) 
 {
-
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	int row = idx / 24;
-	int col = idx % 24;
-	int ftr = blockIdx.y;
+	int row = blockIdx.x * blockDim.x + threadIdx.x;
+	int col = blockIdx.y * blockDim.y + threadIdx.y;
+	int ftr = blockIdx.z * blockDim.z + threadIdx.z;
 	output[ftr][row][col] = 1/(1+__expf(-preoutput[ftr][row][col]));
 	preoutput[ftr][row][col] = 0;
 }
@@ -130,15 +130,11 @@ __global__ void kernel_fc1_filter(
     float weight[FC_FTRS][FC_WSIZE]
 )
 {
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	int iftr = idx / 36;
-	int row = (idx % 36) / 6;
-	int col = (idx % 36) % 6;
-	int oftr = blockIdx.y;
-	if (idx < 216) {
-		float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-		atomicAdd(&preoutput[oftr], mult);
-	}
+	int wRow = threadIdx.x;
+	int wCol = threadIdx.y;
+	int wFtr = threadIdx.z;
+	float mult = input[wFtr][wRow][wCol] * weight[blockIdx.x][wFtr*SS_OUTSIZE*SS_OUTSIZE+wRow*SS_OUTSIZE+wCol];
+	atomicAdd(&preoutput[blockIdx.x], mult);
 }
 
 __global__ void kernel_fc1_bias(
