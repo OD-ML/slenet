@@ -14,8 +14,8 @@ const dim3 cb_numBlocks(18, 6);
 const dim3 cb_threadPerBlock(32);
 const dim3 cs_numBlocks(18, 6);
 const dim3 cs_threadPerBlock(32);
-const dim3 ssf_numBlocks(CONV_OUTSIZE/SS_OUTSIZE, CONV_OUTSIZE/SS_OUTSIZE, 1);
-const dim3 ssf_threadPerBlock(SS_OUTSIZE, SS_OUTSIZE, CONV_FTRS);
+const dim3 ssf_numBlocks(6, 6, 6);
+const dim3 ssf_threadPerBlock(112);
 const dim3 ssb_numBlocks(3, 2, 2);
 const dim3 ssb_threadPerBlock(SS_OUTSIZE/ssb_numBlocks.x, SS_OUTSIZE/ssb_numBlocks.y, CONV_FTRS/ssb_numBlocks.z);
 const dim3 sss_numBlocks(3, 2, 2);
@@ -89,13 +89,27 @@ __global__ void kernel_ss1_filter(
     float preoutput[CONV_FTRS][SS_OUTSIZE][SS_OUTSIZE], 
     float weight[SS_FTRS][SS_WSIZE][SS_WSIZE]) 
 {
-	int row = threadIdx.x;
-	int col = threadIdx.y;
-	int ftr = threadIdx.z;
-	int multRow = row*gridDim.x + blockIdx.x;
-	int multCol = col*gridDim.y + blockIdx.y;
-	float mult = input[ftr][multRow][multCol] * weight[0][blockIdx.x][blockIdx.y];
-	atomicAdd(&preoutput[ftr][row][col], mult);
+	int idx = threadIdx.x;
+	int si_row = idx / 24;
+	int si_col = idx % 24;
+	int sw_row = (idx-96) / 4;
+	int sw_col = (idx-96) % 4;
+	__shared__ float si[4][24];
+	__shared__ float sw[4][4];
+	if (idx < 96)
+		si[si_row][si_col] = input[blockIdx.z][blockIdx.x*4+si_row][si_col];
+	else
+		sw[sw_row][sw_col] = weight[0][sw_row][sw_col];
+	__syncthreads();
+	if (idx < 96 && si_col == 0) {
+		float rw[4];
+		float out = 0;
+		for (int i=0; i<4; i++)
+			rw[i] = sw[sw_row][i];
+		for (int i=0; i<4; i++)
+			out += rw[i] * si[si_row][blockIdx.y * 4 + i];
+		atomicAdd(&preoutput[blockIdx.z][blockIdx.x][blockIdx.y], out);
+	}
 }
 
 __global__ void kernel_ss1_bias(
