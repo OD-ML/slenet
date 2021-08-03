@@ -22,7 +22,7 @@ const dim3 ssb_threadPerBlock(SS_OUTSIZE/ssb_numBlocks.x, SS_OUTSIZE/ssb_numBloc
 const dim3 sss_numBlocks(3, 2, 2);
 const dim3 sss_threadPerBlock(SS_OUTSIZE/sss_numBlocks.x, SS_OUTSIZE/sss_numBlocks.y, CONV_FTRS/sss_numBlocks.z);
 const dim3 fcfNumBlocks(7, 10);
-const dim3 fcfNthreadPerBlock(224 / fcfNumBlocks.x, (9 + fcfNumBlocks.y) / fcfNumBlocks.y);
+const dim3 fcfNthreadPerBlock(32, (9 + fcfNumBlocks.y) / fcfNumBlocks.y);
 const dim3 fcbsNumBlocks(10);
 const dim3 fcbsNthreadPerBlock(FC_OUTSIZE/10);
 
