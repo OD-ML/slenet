@@ -22,7 +22,7 @@ const dim3 ssb_threadPerBlock(SS_OUTSIZE/ssb_numBlocks.x, SS_OUTSIZE/ssb_numBloc
 const dim3 sss_numBlocks(3, 2, 2);
 const dim3 sss_threadPerBlock(SS_OUTSIZE/sss_numBlocks.x, SS_OUTSIZE/sss_numBlocks.y, CONV_FTRS/sss_numBlocks.z);
 const dim3 fcfNumBlocks(7, 5);
-const dim3 fcfNthreadPerBlock(32, 2);
+const dim3 fcfNthreadPerBlock(32, (9 + fcfNumBlocks.y) / fcfNumBlocks.y);
 const dim3 fcbsNumBlocks(10);
 const dim3 fcbsNthreadPerBlock(FC_OUTSIZE/10);
 
@@ -133,15 +133,11 @@ __global__ void kernel_fc1_filter(
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < 216) {
-		__shared__ float sh_inp[32];
         int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
-		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
         for (int offset = 16; offset > 0; offset /= 2)
             mult += __shfl_down_sync(FULL_MASK, mult, offset);
         if (threadIdx.x % 32 == 0)

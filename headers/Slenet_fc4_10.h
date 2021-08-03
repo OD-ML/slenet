@@ -21,8 +21,8 @@ const dim3 ssb_numBlocks(3, 2, 2);
 const dim3 ssb_threadPerBlock(SS_OUTSIZE/ssb_numBlocks.x, SS_OUTSIZE/ssb_numBlocks.y, CONV_FTRS/ssb_numBlocks.z);
 const dim3 sss_numBlocks(3, 2, 2);
 const dim3 sss_threadPerBlock(SS_OUTSIZE/sss_numBlocks.x, SS_OUTSIZE/sss_numBlocks.y, CONV_FTRS/sss_numBlocks.z);
-const dim3 fcfNumBlocks(10, 4);
-const dim3 fcfNthreadPerBlock(64);
+const dim3 fcfNumBlocks(4, 10);
+const dim3 fcfNthreadPerBlock(64, (9 + fcfNumBlocks.y) / fcfNumBlocks.y);
 const dim3 fcbsNumBlocks(10);
 const dim3 fcbsNthreadPerBlock(FC_OUTSIZE/10);
 
@@ -131,9 +131,9 @@ __global__ void kernel_fc1_filter(
     float weight[FC_FTRS][FC_WSIZE]
 )
 {
-	int idx = blockIdx.y * blockDim.x + threadIdx.x;
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < 216) {
-        int oftr = blockIdx.x;
+        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
