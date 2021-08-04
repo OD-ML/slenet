@@ -41,7 +41,7 @@ const dim3 fcfNumBlocks2_10(2, 10);
 const dim3 fcfNthreadPerBlock2_10(128, 1);
 const dim3 fcfNumBlocks2_5(2, 5);
 const dim3 fcfNthreadPerBlock2_5(128, 2);
-const dim3 fcfNumBlocks2_3(2, 4);
+const dim3 fcfNumBlocks2_3(2, 3);
 const dim3 fcfNthreadPerBlock2_3(128, 4);
 const dim3 fcfNumBlocks1_10(1, 10);
 const dim3 fcfNthreadPerBlock1_10(256, 1);
