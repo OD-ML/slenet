@@ -116,6 +116,63 @@ float forward_pass(double data[INSIZE][INSIZE]) {
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
       fcNet->pre_output, 
       (float(*)[FC_WSIZE])fcNet->weight);
+
+	kernel_fc1_filter7_10sh<<<fcfNumBlocks7_10, fcfNthreadPerBlock7_10>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter7_5sh<<<fcfNumBlocks7_5, fcfNthreadPerBlock7_5>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter7_3sh<<<fcfNumBlocks7_3, fcfNthreadPerBlock7_3>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter7_1sh<<<fcfNumBlocks7_1, fcfNthreadPerBlock7_1>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter4_10sh<<<fcfNumBlocks4_10, fcfNthreadPerBlock4_10>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter4_5sh<<<fcfNumBlocks4_5, fcfNthreadPerBlock4_5>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter4_3sh<<<fcfNumBlocks4_3, fcfNthreadPerBlock4_3>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter4_1sh<<<fcfNumBlocks4_1, fcfNthreadPerBlock4_1>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter2_10sh<<<fcfNumBlocks2_10, fcfNthreadPerBlock2_10>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter2_5sh<<<fcfNumBlocks2_5, fcfNthreadPerBlock2_5>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter2_3sh<<<fcfNumBlocks2_3, fcfNthreadPerBlock2_3>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter1_10sh<<<fcfNumBlocks1_10, fcfNthreadPerBlock1_10>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter1_5sh<<<fcfNumBlocks1_5, fcfNthreadPerBlock1_5>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
+	kernel_fc1_filter1_3sh<<<fcfNumBlocks1_3, fcfNthreadPerBlock1_3>>>(
+      (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
+      fcNet->pre_output, 
+      (float(*)[FC_WSIZE])fcNet->weight);
 	kernel_fc1_bias<<<fcbsNumBlocks, fcbsNthreadPerBlock>>>(fcNet->pre_output, fcNet->bias);
 	kernel_fc1_sigmoid<<<fcbsNumBlocks, fcbsNthreadPerBlock>>>(fcNet->pre_output, fcNet->output);
 
