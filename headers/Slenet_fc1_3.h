@@ -132,8 +132,8 @@ __global__ void kernel_fc1_filter(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx < 216 && oftr < FC_FTRS) {
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;

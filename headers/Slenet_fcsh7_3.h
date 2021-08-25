@@ -131,10 +131,10 @@ __global__ void kernel_fc1_filter(
     float weight[FC_FTRS][FC_WSIZE]
 )
 {
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < 216) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx < 216 && oftr < FC_FTRS) {
 		__shared__ float sh_inp[32];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
