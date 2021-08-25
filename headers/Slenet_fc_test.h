@@ -197,8 +197,8 @@ __global__ void kernel_fc1_filter7_3(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx < 216 && oftr < FC_FTRS) {
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
@@ -277,8 +277,8 @@ __global__ void kernel_fc1_filter4_3(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx < 216 && oftr < FC_FTRS) {
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
@@ -357,8 +357,8 @@ __global__ void kernel_fc1_filter2_3(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx < 216 && oftr < FC_FTRS) {
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
@@ -417,8 +417,8 @@ __global__ void kernel_fc1_filter1_3(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx < 216 && oftr < FC_FTRS) {
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
@@ -485,9 +485,9 @@ __global__ void kernel_fc1_filter7_3sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < 216) {
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx < 216 && oftr < FC_FTRS) {
 		__shared__ float sh_inp[32];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
@@ -581,9 +581,9 @@ __global__ void kernel_fc1_filter4_3sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < 216) {
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx < 216 && oftr < FC_FTRS) {
 		__shared__ float sh_inp[64];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
@@ -676,10 +676,10 @@ __global__ void kernel_fc1_filter2_3sh(
     float weight[FC_FTRS][FC_WSIZE]
 )
 {
-	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < 216) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx < 216 && oftr < FC_FTRS) {
 		__shared__ float sh_inp[128];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
@@ -749,9 +749,9 @@ __global__ void kernel_fc1_filter1_3sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < 216) {
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx < 216 && oftr < FC_FTRS) {
 		__shared__ float sh_inp[256];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
