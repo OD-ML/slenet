@@ -3,7 +3,7 @@
 #include "headers/slenet_params.h"
 #include "headers/load_mnist.h"
 #include "headers/Layer.h"
-#include "headers/Slenet_fcEsh4_5.h"
+#include "headers/Slenet_fcWld4_5.h"
 
 // Layer declarations
 Layer *convNet;
@@ -88,10 +88,10 @@ int main() {
 	for (int i=0; i < CONV_FTRS; i++)
 		for (int j = 0; j < CONV_WSIZE; j++)
 			for (int k = 0; k < CONV_WSIZE; k++)
-				convWeights[i][j][k] = c1_weight[i][j*CONV_WSIZE+k];
+				convWeights[i][j][k] = (CONV_FTRS < 6) ? c1_weight[i][j*CONV_WSIZE+k] : 0;
   
 	for (int i=0; i < CONV_FTRS; i++)
-		convBias[i] = c1_bias[i];
+		convBias[i] = (CONV_FTRS < 6) ? c1_bias[i] : 0;
 
 	for (int i=0; i < SS_FTRS; i++)
 		for (int j = 0; j < SS_WSIZE; j++)
@@ -145,7 +145,7 @@ int main() {
 	unsigned int max = 0;
 	float res[FC_OUTSIZE];
   
-	for (i=0; i<10000; i++){
+	for (i=0; i<1; i++){
     time_taken += forward_pass(dataset[i].data);
     cudaMemcpy(res, fcNet->output, sizeof(float)*FC_OUTSIZE, cudaMemcpyDefault);
     for(int j=0; j<10; j++){
@@ -154,10 +154,6 @@ int main() {
       }
     if (max != dataset[i].label) ++error; // error must have the number of incorrect predictions.
 	}
-	printf("Error Rate = %f%% (%d out of 10,000)\n", double(error)/double(test_cnt)*100.0, error);
-	printf("Accuracy = %.3f%% (%d out of 10,000)\n",
-		 100.0 - double(error)/double(test_cnt)*100.0, test_cnt - error);
-	printf("Ex time = %f (ms) \n", time_taken);
   
 	delete[] dataset;
 	delete convNet;
