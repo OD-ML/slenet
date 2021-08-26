@@ -3,7 +3,7 @@
 #include "headers/slenet_params.h"
 #include "headers/load_mnist.h"
 #include "headers/Layer.h"
-#include "headers/Slenet_fcE4_5.h"
+#include "headers/Slenet_fcEsh4_5.h"
 
 // Layer declarations
 Layer *convNet;
@@ -154,10 +154,6 @@ int main() {
       }
     if (max != dataset[i].label) ++error; // error must have the number of incorrect predictions.
 	}
-	printf("Error Rate = %f%% (%d out of 10,000)\n", double(error)/double(test_cnt)*100.0, error);
-	printf("Accuracy = %.3f%% (%d out of 10,000)\n",
-		 100.0 - double(error)/double(test_cnt)*100.0, test_cnt - error);
-	printf("Ex time = %f (ms) \n", time_taken);
   
 	delete[] dataset;
 	delete convNet;
