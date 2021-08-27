@@ -6,8 +6,8 @@
 #define SS_OUTSIZE 6
 #define SS_FTRS 1
 #define SS_WSIZE 4
-#define FC_OUTSIZE 10000
-#define FC_FTRS 10000
+#define FC_OUTSIZE 40
+#define FC_FTRS 40
 #define FC_WSIZE 216*WRKLD_MLTP
 #define FULL_MASK 0xffffffff
 

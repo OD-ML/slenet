@@ -134,14 +134,16 @@ __global__ void kernel_fc1_filter(
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < 216) {
 		__shared__ float sh_inp[64];
+		__shared__ float sh_weight[2][64];
         int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		sh_weight[threadIdx.y][threadIdx.x] = weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
 			sh_inp[threadIdx.x] = input[iftr][row][col];
 		__syncthreads();
-        float mult = weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col] * sh_inp[threadIdx.x];
+        float mult = sh_inp[threadIdx.x]*sh_weight[threadIdx.y][threadIdx.x];
         for (int offset = 16; offset > 0; offset /= 2)
             mult += __shfl_down_sync(FULL_MASK, mult, offset);
         if (threadIdx.x % 32 == 0)

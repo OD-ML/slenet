@@ -1,4 +1,5 @@
 #define WRKLD_MLTP 4
+#define FC_MLTP 4
 
 #define CONV_OUTSIZE 24
 #define CONV_FTRS 6*WRKLD_MLTP
@@ -6,8 +7,8 @@
 #define SS_OUTSIZE 6
 #define SS_FTRS 1
 #define SS_WSIZE 4
-#define FC_OUTSIZE 10000
-#define FC_FTRS 10000
+#define FC_OUTSIZE 10 * FC_MLTP
+#define FC_FTRS 10 * FC_MLTP
 #define FC_WSIZE 216*WRKLD_MLTP
 #define FULL_MASK 0xffffffff
 
@@ -136,22 +137,26 @@ __global__ void kernel_fc1_filter(
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < 216) {
 		__shared__ float sh_inp[64*WRKLD_MLTP];
+		__shared__ float sh_weight[2*FC_MLTP][64*WRKLD_MLTP];
         int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
 			for (int i=0; i < WRKLD_MLTP; i++)
 				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
 		#pragma unroll
-		for (int k = 0; k < WRKLD_MLTP; k++) {
-			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
-				float mult = sh_inp[threadIdx.x + blockDim.x*k] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
 				for (int offset = 16; offset > 0; offset /= 2)
 					mult += __shfl_down_sync(FULL_MASK, mult, offset);
 				if (threadIdx.x % 32 == 0)
-					atomicAdd(&preoutput[i], mult);
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
 			}
 		}
     }
