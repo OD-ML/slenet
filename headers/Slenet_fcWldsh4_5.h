@@ -135,14 +135,19 @@ __global__ void kernel_fc1_filter(
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < 216) {
+		__shared__ float sh_inp[64*WRKLD_MLTP];
         int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		if (threadIdx.y == 0)
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
+		__syncthreads();
 		#pragma unroll
 		for (int k = 0; k < WRKLD_MLTP; k++) {
 			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
-				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				float mult = sh_inp[threadIdx.x + blockDim.x*k] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 				for (int offset = 16; offset > 0; offset /= 2)
 					mult += __shfl_down_sync(FULL_MASK, mult, offset);
 				if (threadIdx.x % 32 == 0)
