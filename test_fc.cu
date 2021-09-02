@@ -129,6 +129,7 @@ float forward_pass(double data[INSIZE][INSIZE]) {
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
       fcNet->pre_output, 
       (float(*)[FC_WSIZE])fcNet->weight);
+
 	kernel_fc1_filter7_1sh<<<fcfNumBlocks7_1, fcfNthreadPerBlock7_1>>>(
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
       fcNet->pre_output, 
@@ -141,6 +142,7 @@ float forward_pass(double data[INSIZE][INSIZE]) {
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
       fcNet->pre_output, 
       (float(*)[FC_WSIZE])fcNet->weight);
+
 	kernel_fc1_filter4_3sh<<<fcfNumBlocks4_3, fcfNthreadPerBlock4_3>>>(
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
       fcNet->pre_output, 
@@ -157,10 +159,12 @@ float forward_pass(double data[INSIZE][INSIZE]) {
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
       fcNet->pre_output, 
       (float(*)[FC_WSIZE])fcNet->weight);
+
 	kernel_fc1_filter2_3sh<<<fcfNumBlocks2_3, fcfNthreadPerBlock2_3>>>(
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
       fcNet->pre_output, 
       (float(*)[FC_WSIZE])fcNet->weight);
+      
 	kernel_fc1_filter1_10sh<<<fcfNumBlocks1_10, fcfNthreadPerBlock1_10>>>(
       (float(*)[SS_OUTSIZE][SS_OUTSIZE])ss1Net->output, 
       fcNet->pre_output, 
@@ -197,10 +201,10 @@ int main() {
 	for (int i=0; i < CONV_FTRS; i++)
 		for (int j = 0; j < CONV_WSIZE; j++)
 			for (int k = 0; k < CONV_WSIZE; k++)
-				convWeights[i][j][k] = c1_weight[i][j*CONV_WSIZE+k];
+				convWeights[i][j][k] = (i < 6) ? c1_weight[i][j*CONV_WSIZE+k] : 0;
   
 	for (int i=0; i < CONV_FTRS; i++)
-		convBias[i] = c1_bias[i];
+		convBias[i] = (i < 6) ? c1_bias[i] : 0;
 
 	for (int i=0; i < SS_FTRS; i++)
 		for (int j = 0; j < SS_WSIZE; j++)
@@ -212,10 +216,16 @@ int main() {
   
 	for (int i=0; i < FC_FTRS; i++)
 		for (int j=0; j < FC_WSIZE; j++)
-			fcWeights[i][j] = f3_weight[i][j];
-  
+			if (i < 10 && j < 216)
+				fcWeights[i][j] = f3_weight[i][j];
+			else
+				fcWeights[i][j] = 0;
+
 	for (int i=0; i < FC_FTRS; i++)
-		fcBias[i] = f3_bias[i];
+		if (i < 10)
+			fcBias[i] = f3_bias[i];
+		else
+			fcBias[i] = 0;
 
 	convNet = new Layer(CONV_WSIZE*CONV_WSIZE, CONV_FTRS, CONV_FTRS*CONV_OUTSIZE*CONV_OUTSIZE);
 	ss1Net = new Layer(SS_WSIZE*SS_WSIZE, SS_FTRS, CONV_FTRS*SS_OUTSIZE*SS_OUTSIZE);
@@ -246,23 +256,21 @@ int main() {
 	float time_taken = 0;
 	unsigned int error = 0;
 	unsigned int max = 0;
-	float res[10];
+	float res[FC_OUTSIZE];
   
-	for (i=0; i<1; i++){
-    time_taken += forward_pass(dataset[i].data);
-    cudaMemcpy(res, fcNet->output, sizeof(float)*10, cudaMemcpyDefault);
-    for(int j=0; j<10; j++){
-      if (res[max] < res[j])
-        max = j;
-      }
-    if (max != dataset[i].label) ++error; // error must have the number of incorrect predictions.
+	for (i=0; i<1; i++) {
+            time_taken += forward_pass(dataset[i].data);
+            cudaMemcpy(res, fcNet->output, sizeof(float)*FC_OUTSIZE, cudaMemcpyDefault);
+            for(int j=0; j<10; j++) {
+                  if (res[max] < res[j])
+                  max = j;
+            }
+            if (max != dataset[i].label) ++error; // error must have the number of incorrect predictions.
 	}
-	/*
-	printf("Error Rate = %f%% (%d out of 10,000)\n", double(error)/double(test_cnt)*100.0, error);
-	printf("Accuracy = %.3f%% (%d out of 10,000)\n",
-		 100.0 - double(error)/double(test_cnt)*100.0, test_cnt - error);
-	printf("Ex time = %f (ms) \n", time_taken);
-  	*/
+	// printf("Error Rate = %f%% (%d out of 10,000)\n", double(error)/double(test_cnt)*100.0, error);
+	// printf("Accuracy = %.3f%% (%d out of 10,000)\n",
+	// 	 100.0 - double(error)/double(test_cnt)*100.0, test_cnt - error);
+	// printf("Ex time = %f (ms) \n", time_taken);
 	delete[] dataset;
 	delete convNet;
 	delete ss1Net;

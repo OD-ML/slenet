@@ -1,12 +1,15 @@
+#define FC_MLTP 1
+#define WRKLD_MLTP 1
+
 #define CONV_OUTSIZE 24
-#define CONV_FTRS 6
+#define CONV_FTRS 6 * WRKLD_MLTP
 #define CONV_WSIZE 5
 #define SS_OUTSIZE 6
 #define SS_FTRS 1
 #define SS_WSIZE 4
-#define FC_OUTSIZE 10
-#define FC_FTRS 10
-#define FC_WSIZE 216
+#define FC_OUTSIZE 10 * FC_MLTP
+#define FC_FTRS 10 * FC_MLTP
+#define FC_WSIZE 216 * WRKLD_MLTP
 #define FULL_MASK 0xffffffff
 
 const dim3 cf_numBlocks(6, 6, 1);
@@ -157,16 +160,21 @@ __global__ void kernel_fc1_filter7_10(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -177,16 +185,21 @@ __global__ void kernel_fc1_filter7_5(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -202,11 +215,16 @@ __global__ void kernel_fc1_filter7_3(
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -217,16 +235,21 @@ __global__ void kernel_fc1_filter7_1(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -237,16 +260,21 @@ __global__ void kernel_fc1_filter4_10(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -257,16 +285,21 @@ __global__ void kernel_fc1_filter4_5(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -282,11 +315,16 @@ __global__ void kernel_fc1_filter4_3(
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -297,16 +335,21 @@ __global__ void kernel_fc1_filter4_1(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -317,16 +360,21 @@ __global__ void kernel_fc1_filter2_10(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -337,16 +385,21 @@ __global__ void kernel_fc1_filter2_5(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -362,11 +415,16 @@ __global__ void kernel_fc1_filter2_3(
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -377,16 +435,21 @@ __global__ void kernel_fc1_filter1_10(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -397,16 +460,21 @@ __global__ void kernel_fc1_filter1_5(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -422,11 +490,16 @@ __global__ void kernel_fc1_filter1_3(
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
-        float mult = input[iftr][row][col] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int k = 0; k < WRKLD_MLTP; k++) {
+			for (int i=oftr; i < FC_OUTSIZE; i+=gridDim.y*blockDim.y) {
+				float mult = input[(iftr+6*k)][row][col] * weight[i][(iftr+6*k)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[i], mult);
+			}
+		}
     }
 }
 
@@ -437,20 +510,30 @@ __global__ void kernel_fc1_filter7_10sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-		__shared__ float sh_inp[32];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+		__shared__ float sh_inp[32*WRKLD_MLTP];
+		__shared__ float sh_weight[FC_MLTP][32*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -461,20 +544,30 @@ __global__ void kernel_fc1_filter7_5sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-		__shared__ float sh_inp[32];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+		__shared__ float sh_inp[32*WRKLD_MLTP];
+		__shared__ float sh_weight[2*FC_MLTP][32*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -485,20 +578,30 @@ __global__ void kernel_fc1_filter7_3sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216 && oftr < FC_FTRS) {
-		__shared__ float sh_inp[32];
+		__shared__ float sh_inp[32*WRKLD_MLTP];
+		__shared__ float sh_weight[4*FC_MLTP][64*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -509,20 +612,30 @@ __global__ void kernel_fc1_filter7_1sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-		__shared__ float sh_inp[32];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+		__shared__ float sh_inp[64*WRKLD_MLTP];
+		__shared__ float sh_weight[10*FC_MLTP][64*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -533,20 +646,30 @@ __global__ void kernel_fc1_filter4_10sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-		__shared__ float sh_inp[64];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+		__shared__ float sh_inp[64*WRKLD_MLTP];
+		__shared__ float sh_weight[FC_MLTP][64*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -557,20 +680,30 @@ __global__ void kernel_fc1_filter4_5sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-		__shared__ float sh_inp[64];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+		__shared__ float sh_inp[64*WRKLD_MLTP];
+		__shared__ float sh_weight[2*FC_MLTP][64*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -581,20 +714,30 @@ __global__ void kernel_fc1_filter4_3sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216 && oftr < FC_FTRS) {
-		__shared__ float sh_inp[64];
+		__shared__ float sh_inp[64*WRKLD_MLTP];
+		__shared__ float sh_weight[4*FC_MLTP][64*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -605,20 +748,30 @@ __global__ void kernel_fc1_filter4_1sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-		__shared__ float sh_inp[64];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+		__shared__ float sh_inp[64*WRKLD_MLTP];
+		__shared__ float sh_weight[10*FC_MLTP][64*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -629,20 +782,30 @@ __global__ void kernel_fc1_filter2_10sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-		__shared__ float sh_inp[128];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+		__shared__ float sh_inp[128*WRKLD_MLTP];
+		__shared__ float sh_weight[FC_MLTP][128*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -653,20 +816,30 @@ __global__ void kernel_fc1_filter2_5sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-		__shared__ float sh_inp[128];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+		__shared__ float sh_inp[128*WRKLD_MLTP];
+		__shared__ float sh_weight[2*FC_MLTP][128*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -676,21 +849,31 @@ __global__ void kernel_fc1_filter2_3sh(
     float weight[FC_FTRS][FC_WSIZE]
 )
 {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
-    if (idx < 216 && oftr < FC_FTRS) {
-		__shared__ float sh_inp[128];
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+    if (idx < 216 < FC_FTRS) {
+		__shared__ float sh_inp[128*WRKLD_MLTP];
+		__shared__ float sh_weight[4*FC_MLTP][128*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -701,20 +884,30 @@ __global__ void kernel_fc1_filter1_10sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-		__shared__ float sh_inp[256];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+		__shared__ float sh_inp[256*WRKLD_MLTP];
+		__shared__ float sh_weight[FC_MLTP][256*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -725,20 +918,30 @@ __global__ void kernel_fc1_filter1_5sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216) {
-		__shared__ float sh_inp[256];
-        int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+		__shared__ float sh_inp[256*WRKLD_MLTP];
+		__shared__ float sh_weight[2*FC_MLTP][256*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
@@ -749,20 +952,30 @@ __global__ void kernel_fc1_filter1_3sh(
 )
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int oftr = blockIdx.y * blockDim.y + threadIdx.y;
+	int oftr = blockIdx.y * blockDim.y + threadIdx.y;
     if (idx < 216 && oftr < FC_FTRS) {
-		__shared__ float sh_inp[256];
+		__shared__ float sh_inp[256*WRKLD_MLTP];
+		__shared__ float sh_weight[4*FC_MLTP][256*WRKLD_MLTP];
         int iftr = idx / 36;
         int row = (idx %= 36) / 6;
         int col = idx % 6;
+		for (int i=0; i < FC_MLTP; i++)
+			for (int j=0; j < WRKLD_MLTP; j++)
+				sh_weight[threadIdx.y + blockDim.y * i][threadIdx.x + blockDim.x*j] = weight[oftr + gridDim.y*blockDim.y*i][(iftr+6*j)*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
 		if (threadIdx.y == 0)
-			sh_inp[threadIdx.x] = input[iftr][row][col];
+			for (int i=0; i < WRKLD_MLTP; i++)
+				sh_inp[threadIdx.x + blockDim.x*i] = input[iftr + 6*i][row][col];
 		__syncthreads();
-        float mult = sh_inp[threadIdx.x] * weight[oftr][iftr*SS_OUTSIZE*SS_OUTSIZE+row*SS_OUTSIZE+col];
-        for (int offset = 16; offset > 0; offset /= 2)
-            mult += __shfl_down_sync(FULL_MASK, mult, offset);
-        if (threadIdx.x % 32 == 0)
-            atomicAdd(&preoutput[oftr], mult);
+		#pragma unroll
+		for (int j = 0; j < WRKLD_MLTP; j++) {
+			for (int i=0; i < FC_MLTP; i+=1) {
+				float mult = sh_inp[threadIdx.x + blockDim.x*j] * sh_weight[threadIdx.y + blockDim.y*i][threadIdx.x + blockDim.x*j];
+				for (int offset = 16; offset > 0; offset /= 2)
+					mult += __shfl_down_sync(FULL_MASK, mult, offset);
+				if (threadIdx.x % 32 == 0)
+					atomicAdd(&preoutput[oftr + gridDim.y*blockDim.y*i], mult);
+			}
+		}
     }
 }
 
