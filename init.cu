@@ -3,7 +3,8 @@
 #include "headers/slenet_params.h"
 #include "headers/load_mnist.h"
 #include "headers/Layer.h"
-#include "headers/Slenet_fc4_5.h"
+//#include "headers/Slenet_fc4_5.h"
+#include "headers/Slenet_shv1.h" //jurn 
 
 // Layer declarations
 Layer *convNet;
